@@ -126,14 +126,12 @@ def get_resque_statistics(client, namespace):
             time_since_worker_was_idle = None
 
     return {
+        "jobs_failed_now": int(
+            client.llen("{namespace}:failed".format(namespace=namespace))
+        ),
+        "jobs_pending_now": sum([queue["jobs_pending"] for queue in queues.values()]),
         "number_of_workers": len(
             client.smembers("{namespace}:workers".format(namespace=namespace))
-        ),
-        "jobs_failed": int(
-            client.get("{namespace}:stat:failed".format(namespace=namespace))
-        ),
-        "jobs_processed": int(
-            client.get("{namespace}:stat:processed".format(namespace=namespace))
         ),
         "worker_status": workers,
         "workers": len(workers),
@@ -143,8 +141,17 @@ def get_resque_statistics(client, namespace):
         "workers_working": len(
             [worker for worker in workers.values() if worker["working"]]
         ),
-        "time_since_worker_was_idle": time_since_worker_was_idle,
+        "time_since_any_worker_was_idle": time_since_worker_was_idle,
         "queues": queues,
+        "historic": {
+            "jobs_failed": int(
+                client.get("{namespace}:stat:failed".format(namespace=namespace)) or "0"
+            ),
+            "jobs_processed": int(
+                client.get("{namespace}:stat:processed".format(namespace=namespace))
+                or "0"
+            ),
+        },
     }
 
 
