@@ -34,22 +34,35 @@ def get_resque_statistics(client, namespace):
     workers = defaultdict(dict)
     queues = defaultdict(dict)
 
-    for worker_key in client.smembers(f"{namespace}:workers"):
+    for worker_key in client.smembers(
+        "{namespace}:workers".format(namespace=namespace)
+    ):
         worker_key = worker_key.decode("utf-8")
 
         worker_started_at = parse_date(
-            client.get(f"{namespace}:worker:{worker_key}:started")
+            client.get(
+                "{namespace}:worker:{worker_key}:started".format(
+                    namespace=namespace, worker_key=worker_key
+                )
+            )
         )
 
         workers[worker_key]["started"] = format_date(worker_started_at)
         workers[worker_key]["age"] = (now - worker_started_at).total_seconds()
 
         worker_heartbeat_at = parse_date(
-            client.hget(f"{namespace}:workers:heartbeat", worker_key)
+            client.hget(
+                "{namespace}:workers:heartbeat".format(namespace=namespace), worker_key
+            )
         )
 
         worker_job_status = json.loads(
-            client.get(f"{namespace}:worker:{worker_key}") or "{}"
+            client.get(
+                "{namespace}:worker:{worker_key}".format(
+                    namespace=namespace, worker_key=worker_key
+                )
+            )
+            or "{}"
         )
 
         if "run_at" in worker_job_status:
@@ -72,17 +85,31 @@ def get_resque_statistics(client, namespace):
         ).total_seconds()
 
         workers[worker_key]["jobs_processed"] = int(
-            client.get(f"{namespace}:stat:processed:{worker_key}") or 0
+            client.get(
+                "{namespace}:stat:processed:{worker_key}".format(
+                    namespace=namespace, worker_key=worker_key
+                )
+            )
+            or 0
         )
         workers[worker_key]["jobs_failed"] = int(
-            client.get(f"{namespace}:stat:failed:{worker_key}") or 0
+            client.get(
+                "{namespace}:stat:failed:{worker_key}".format(
+                    namespace=namespace, worker_key=worker_key
+                )
+            )
+            or 0
         )
 
-    for queue in client.smembers(f"{namespace}:queues"):
+    for queue in client.smembers("{namespace}:queues".format(namespace=namespace)):
         queue = queue.decode("utf-8")
 
-        queues[queue]["jobs_pending"] = client.llen(f"{namespace}:queue:{queue}")
-        queues[queue]["jobs_failed"] = client.llen(f"{namespace}:failed")
+        queues[queue]["jobs_pending"] = client.llen(
+            "{namespace}:queue:{queue}".format(namespace=namespace, queue=queue)
+        )
+        queues[queue]["jobs_failed"] = client.llen(
+            "{namespace}:failed".format(namespace=namespace)
+        )
 
     worker_times_since_idle = [
         worker["working_since_time_ago"]
@@ -98,9 +125,15 @@ def get_resque_statistics(client, namespace):
             time_since_worker_was_idle = None
 
     return {
-        "number_of_workers": len(client.smembers(f"{namespace}:workers")),
-        "jobs_failed": int(client.get(f"{namespace}:stat:failed")),
-        "jobs_processed": int(client.get(f"{namespace}:stat:processed")),
+        "number_of_workers": len(
+            client.smembers("{namespace}:workers".format(namespace=namespace))
+        ),
+        "jobs_failed": int(
+            client.get("{namespace}:stat:failed".format(namespace=namespace))
+        ),
+        "jobs_processed": int(
+            client.get("{namespace}:stat:processed".format(namespace=namespace))
+        ),
         "worker_status": workers,
         "workers": len(workers),
         "workers_idle": len(
