@@ -1,17 +1,18 @@
 from bottle import route, run
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime
 from dateutil import tz
 from dateutil.parser import parse
 import itertools
 import json
 import operator
+import os
+import re
 import redis
 
-REDIS_HOST = "localhost"
-REDIS_PORT = int("6379")
-REDIS_DB = int("0")
-REDIS_NAMESPACES = "resque:crm:development".split(",")
+REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
+REDIS_DB = int(os.environ.get("REDIS_DB", "0"))
 
 
 def parse_date(date_string):
@@ -30,7 +31,7 @@ def reformat_date(date_string):
 
 
 def get_resque_statistics(client, namespace):
-    now = datetime.now(timezone.utc)
+    now = datetime.now().replace(tzinfo=tz.gettz("UTC"))
     workers = defaultdict(dict)
     queues = defaultdict(dict)
 
@@ -150,10 +151,11 @@ def get_resque_statistics(client, namespace):
 @route("/")
 def index():
     client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
-    return {
-        namespace: get_resque_statistics(client, namespace)
-        for namespace in REDIS_NAMESPACES
-    }
+    resque_instances = [
+        re.sub(r":queues$", "", key.decode("utf-8")) for key in client.keys("*:queues")
+    ]
+
+    return {key: get_resque_statistics(client, key) for key in resque_instances}
 
 
 if __name__ == "__main__":
