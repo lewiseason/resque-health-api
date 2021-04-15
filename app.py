@@ -31,7 +31,7 @@ def reformat_date(date_string):
 
 
 def get_resque_statistics(client, namespace):
-    now = datetime.now().replace(tzinfo=tz.gettz("UTC"))
+    now = datetime.utcnow().replace(tzinfo=tz.gettz("UTC"))
     workers = defaultdict(dict)
     queues = defaultdict(dict)
 
